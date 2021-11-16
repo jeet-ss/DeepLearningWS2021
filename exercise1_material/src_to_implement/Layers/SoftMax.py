@@ -1,6 +1,7 @@
+from Layers.Base import BaseLayer
 import numpy as np
 
-class SoftMax:
+class SoftMax(BaseLayer):
 
     def __init__(self):
         super().__init__()
