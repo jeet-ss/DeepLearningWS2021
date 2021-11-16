@@ -8,6 +8,7 @@ class FullyConnected(BaseLayer):
         self.trainable = True
         self.input_size = input_size
         self.output_size = output_size
+        #initial random weights
         weights = np.random.rand(self.input_size + 1, self.output_size)
         self.weights = weights
         self._optimizer = None

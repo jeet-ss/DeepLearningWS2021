@@ -1,3 +1,5 @@
+import copy
+
 class NeuralNetwork:
     def __init__(self, optimizer):
         self.optimizer = optimizer
@@ -14,10 +16,12 @@ class NeuralNetwork:
         pass
 
     def append_layer(self, layer):
-        pass
+        optimizer_copy = copy.deepcopy(self.optimizer)
 
     def train(self, iterations):
-        pass
+        for i in range(iterations):
+            loss = self.forward()
+            self.loss.append(loss)
 
     def test(self, input_tensor):
         pass
