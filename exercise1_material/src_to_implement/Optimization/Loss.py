@@ -8,10 +8,6 @@ class CrossEntropyLoss:
         self.prediction = prediction_tensor
         self.label = label_tensor
         #
-        #for idx, item in np.ndenumerate(self.prediction):
-        #    if self.label[idx] == 1:
-         #       ce_Loss += -np.log(item + np.finfo(np.dtype(float)).eps)
-        #
         loss = np.sum(- np.log(self.prediction[self.label == 1] + np.finfo(np.dtype(float)).eps))
         #
         self.loss = loss
