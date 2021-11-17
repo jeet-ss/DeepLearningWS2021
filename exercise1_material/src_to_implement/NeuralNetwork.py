@@ -19,7 +19,6 @@ class NeuralNetwork(BaseLayer):
         self.input_tensor , self.label_tensor = self.data_layer.next()
         for layer in self.layers:
             self.input_tensor = layer.forward(self.input_tensor)
-
         loss = self.loss_layer.forward(self.input_tensor, self.label_tensor)
         return loss
 
@@ -29,9 +28,9 @@ class NeuralNetwork(BaseLayer):
             self.error_tensor = layer.backward(self.error_tensor)
 
     def append_layer(self, layer):
-        #if self.trainable:
-        optimizer_copy = copy.deepcopy(self.optimizer)
-        layer.optimizer = optimizer_copy
+        if layer.trainable:
+            optimizer_copy = copy.deepcopy(self.optimizer)
+            layer.optimizer = optimizer_copy
         self.layers.append(layer)
 
     def train(self, iterations):
