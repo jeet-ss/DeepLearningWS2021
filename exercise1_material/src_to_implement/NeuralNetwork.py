@@ -43,4 +43,5 @@ class NeuralNetwork(BaseLayer):
     def test(self, input_tensor):
         for layer in self.layers:
             input_tensor = layer.forward(input_tensor)
+
         return input_tensor
