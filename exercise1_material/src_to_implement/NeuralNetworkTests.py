@@ -176,8 +176,8 @@ class TestSoftMax(unittest.TestCase):
         self.assertAlmostEqual(float(loss), 12)
 
     def test_regression_backward_high_loss_w_CrossEntropy(self):
-        input_tensor = self.label_tensor - 1.
-        input_tensor *= -100.
+        input_tensor = self.label_tensor - 1
+        input_tensor *= -10.
         layer = SoftMax.SoftMax()
         loss_layer = Loss.CrossEntropyLoss()
 
@@ -187,11 +187,12 @@ class TestSoftMax(unittest.TestCase):
         error = layer.backward(error)
         # test if every wrong class confidence is decreased
         for element in error[self.label_tensor == 0]:
-            self.assertGreaterEqual(element, 1/3)
+            self.assertAlmostEqual(element, 1/3, places = 3)
 
         # test if every correct class confidence is increased
         for element in error[self.label_tensor == 1]:
-            self.assertAlmostEqual(element, -1)
+            self.assertAlmostEqual(element, -1, places = 3)
+
 
     def test_regression_forward(self):
         np.random.seed(1337)

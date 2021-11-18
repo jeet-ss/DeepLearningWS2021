@@ -17,5 +17,5 @@ class CrossEntropyLoss:
     def backward(self, label_tensor):
         self.label_tensor = label_tensor
         #
-        error = -(self.label_tensor/self.prediction)
+        error = -(self.label_tensor/(self.prediction + np.finfo(np.dtype(float)).eps))
         return error

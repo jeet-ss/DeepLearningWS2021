@@ -1,8 +1,7 @@
 import copy
 import numpy as np
-from Layers.Base import BaseLayer
 
-class NeuralNetwork(BaseLayer):
+class NeuralNetwork():
     def __init__(self, optimizer):
         super().__init__()
         self.optimizer = optimizer
