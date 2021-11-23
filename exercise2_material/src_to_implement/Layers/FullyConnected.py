@@ -8,18 +8,17 @@ class FullyConnected(BaseLayer):
         self.trainable = True
         self.input_size = input_size
         self.output_size = output_size
-        #initial random weights
+        # initial random weights
         weights = np.random.rand(self.input_size + 1, self.output_size)
         self.weights = weights
         self._optimizer = None
+        self.input = 0
 
     def forward(self, input_tensor):
-        X = np.c_[input_tensor, np.ones((input_tensor.shape[0], 1))]
-        W = self.weights
-        self.input = X
-        self.weights = W
-        Y_hat = np.dot(X, W)
-        return Y_hat
+        self.input = np.c_[input_tensor, np.ones((input_tensor.shape[0], 1))]
+        self.weights = self.weights
+        # Y_hat = np.dot(X, W)
+        return np.dot(self.input, self.weights)
 
     def backward(self, error_tensor):
         x = self.input
@@ -50,3 +49,8 @@ class FullyConnected(BaseLayer):
     @optimizer.deleter
     def optimizer(self):
         del self._optimizer
+
+    def initialize(self, weights_initializer, bias_initializer):
+        weights = weights_initializer.initialize((self.weights.shape[0]-1, self.weights.shape[1]), self.input_size, self.output_size)
+        bias = bias_initializer.initialize((1, self.weights.shape[1]), self.input_size, self.output_size)
+        self.weights = np.vstack((weights, bias))
