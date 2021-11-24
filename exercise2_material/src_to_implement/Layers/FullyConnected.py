@@ -51,6 +51,7 @@ class FullyConnected(BaseLayer):
         del self._optimizer
 
     def initialize(self, weights_initializer, bias_initializer):
+        # add
         weights = weights_initializer.initialize((self.weights.shape[0]-1, self.weights.shape[1]), self.input_size, self.output_size)
         bias = bias_initializer.initialize((1, self.weights.shape[1]), self.input_size, self.output_size)
         self.weights = np.vstack((weights, bias))
