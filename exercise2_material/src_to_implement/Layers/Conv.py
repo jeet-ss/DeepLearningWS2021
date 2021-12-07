@@ -17,7 +17,13 @@ class Conv(BaseLayer):
         self.convolution_shape = convolution_shape  # decides 1D or 2D convolution
 
         # self.weights = np.linspace(-1.0, 1.0, num=np.prod(weight_shape), dtype='float64').reshape(weight_shape)
-        self.weights = np.random.uniform(0,1, (np.concatenate(([self.num_kernels], self.convolution_shape))))
+        if len(convolution_shape)==1:
+            convolution_shape_1D = np.append(convolution_shape, [1])
+            self.convolution_shape = tuple(convolution_shape_1D)
+
+        self.weights_shape = (num_kernels,) + self.convolution_shape
+        self.weights = np.random.uniform(0.0, 1.0, self.weights_shape)
+        #self.weights = np.random.uniform(0.0,1.0, (np.concatenate(([self.num_kernels], self.convolution_shape))))
         # weight_shape = (num_kernels, self.convolution_shape)
         self.bias = np.random.randn(num_kernels)
 
@@ -29,7 +35,15 @@ class Conv(BaseLayer):
 
     def forward(self, input_tensor):
         self.input_tensor = input_tensor
-        image_size  = np.shape(input_tensor)[2::]
+        #
+        '''
+        if np.ndim(input_tensor) == 4:
+            image_size  = np.shape(input_tensor)[2::]
+        elif np.ndim(input_tensor) == 3:
+            image_size = np.shape(input_tensor)[1::]
+        
+        '''
+        image_size = np.shape(input_tensor)[2::]
         # output for all images
         feature_map = np.zeros((np.concatenate(((1, self.num_kernels), image_size))))
         # loop through image tensor
@@ -41,7 +55,6 @@ class Conv(BaseLayer):
             for i in range(self.num_kernels):
                 w = self.weights[i]
                 forward_conv = signal.correlate(image, self.weights[i], mode='same')
-
                 forward_conv1 = np.sum(forward_conv, axis=0) + self.bias[i]
                 # stack up the features from each kernel
                 features = np.append(features, [forward_conv1], axis = 0)
@@ -53,6 +66,8 @@ class Conv(BaseLayer):
         # Strides
         if len(self.stride_shape) == 2:
             feature_map = feature_map[:, :, 0::self.stride_shape[0], 0::self.stride_shape[1]]
+        elif len(self.stride_shape) == 1:
+            feature_map = feature_map[:, :, 0::self.stride_shape[0]]
 
         return feature_map
 
