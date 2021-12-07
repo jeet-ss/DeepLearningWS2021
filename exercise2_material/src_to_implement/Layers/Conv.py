@@ -36,13 +36,6 @@ class Conv(BaseLayer):
     def forward(self, input_tensor):
         self.input_tensor = input_tensor
         #
-        '''
-        if np.ndim(input_tensor) == 4:
-            image_size  = np.shape(input_tensor)[2::]
-        elif np.ndim(input_tensor) == 3:
-            image_size = np.shape(input_tensor)[1::]
-        
-        '''
         image_size = np.shape(input_tensor)[2::]
         # output for all images
         feature_map = np.zeros((np.concatenate(((1, self.num_kernels), image_size))))
@@ -53,7 +46,7 @@ class Conv(BaseLayer):
             features = np.zeros((np.concatenate(((1,), image_size))))
             # loop through the kernels
             for i in range(self.num_kernels):
-                w = self.weights[i]
+                #w = self.weights[i]
                 forward_conv = signal.correlate(image, self.weights[i], mode='same')
                 forward_conv1 = np.sum(forward_conv, axis=0) + self.bias[i]
                 # stack up the features from each kernel
