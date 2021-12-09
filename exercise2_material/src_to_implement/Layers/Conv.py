@@ -23,18 +23,21 @@ class Conv(BaseLayer):
         self.convolution_shape = convolution_shape  # decides 1D or 2D convolution
 
         # self.weights = np.linspace(-1.0, 1.0, num=np.prod(weight_shape), dtype='float64').reshape(weight_shape)
+        '''
         if len(convolution_shape) == 1:
             convolution_shape_1D = np.append(convolution_shape, [1])
             self.convolution_shape = tuple(convolution_shape_1D)
-
+        '''
         self.weights_shape = (num_kernels,) + self.convolution_shape
         self.weights = np.random.uniform(0.0, 1.0, self.weights_shape)
         # self.weights = np.random.uniform(0.0,1.0, (np.concatenate(([self.num_kernels], self.convolution_shape))))
         # weight_shape = (num_kernels, self.convolution_shape)
         self.bias = np.random.randn(num_kernels)
 
-        self.gradient_weights = np.zeros(self.weights.shape)
-        self.gradient_bias = np.random.randn(num_kernels)
+        #self.gradient_weights = np.zeros(self.weights.shape)
+        #self.gradient_bias = np.random.randn(num_kernels)
+        self.gradient_weights = None
+        self.gradient_bias = None
 
         self.cnn_params = {"stride": self.stride_shape, "pad": 1}
         self.cache = None
@@ -58,21 +61,25 @@ class Conv(BaseLayer):
             features = np.zeros((np.concatenate(((1,), self.image_size))))
             # loop through the kernels
             for i in range(self.num_kernels):
+                if self.convolution_shape[0] == 1:
+                    layer = 0
+                else:
+                    layer = math.floor(self.convolution_shape[0] / 2)
                 # w = self.weights[i]
-                forward_conv = signal.correlate(image, self.weights[i], mode='same')
-                forward_conv1 = np.sum(forward_conv, axis=0) + self.bias[i]
+                forward_conv = signal.correlate(image, self.weights[i], mode='same')[layer] + self.bias[i]
+                #forward_conv1 = np.sum(forward_conv, axis=0)
                 # stack up the features from each kernel
-                features = np.append(features, [forward_conv1], axis=0)
+                features = np.append(features, [forward_conv], axis=0)
             # stack up features for each image
             feature_map = np.append(feature_map, [features[1::]], axis=0)
         # get rid of the layer with only zeros
         feature_map = feature_map[1::]
-
         # Strides
         if len(self.stride_shape) == 2:
             feature_map = feature_map[:, :, 0::self.stride_shape[0], 0::self.stride_shape[1]]
         elif len(self.stride_shape) == 1:
             feature_map = feature_map[:, :, 0::self.stride_shape[0]]
+
         return feature_map
 
     def backward(self, error_tensor):
@@ -85,8 +92,11 @@ class Conv(BaseLayer):
         self.error_tensor = error_empty
         # reshaping weights
         back_weights = np.copy(self.weights)
+
         back_weights = np.swapaxes(back_weights, 0, 1)  # swap kernel no and channel
-        back_weights = np.flip(back_weights, 1)  # flip along channels
+        if np.ndim(self.weights) == 4:
+            back_weights = np.flip(back_weights, 1)  # flip along channels
+
         self.back_weights = back_weights
 
         # gradient wrt lower layer
@@ -94,8 +104,13 @@ class Conv(BaseLayer):
         for layer in self.error_tensor:
             features_back = np.zeros((np.concatenate(((1,), self.image_size))))
             for i in range(self.back_weights.shape[0]):
-                back_conv = signal.convolve(layer, self.back_weights[i], mode='same')
-                back_conv = np.sum(back_conv, axis=0)
+                if(back_weights.shape[1] == 1):
+                    layer_indx = 0
+                else:
+                    layer_indx = math.floor(back_weights.shape[1] / 2)
+                print(back_weights.shape, layer_indx)
+                back_conv = signal.convolve(layer, self.back_weights[i], mode='same')[layer_indx]
+                #back_conv = np.sum(back_conv, axis=0)
                 features_back = np.append(features_back, [back_conv], axis=0)
             feature_map_back = np.append(feature_map_back, [features_back[1::]], axis=0)
         feature_map_back = feature_map_back[1::]
@@ -158,9 +173,9 @@ class Conv(BaseLayer):
         self.weights = weights_initializer.initialize(self.weights.shape,
                                                       np.prod(self.convolution_shape),
                                                       self.num_kernels * np.prod(self.convolution_shape[1::]))
-        self.bias = bias_initializer.initialize(self.bias.shape,np.prod(self.bias.shape), np.prod(self.bias.shape))
+        #self.bias = bias_initializer.initialize(self.bias.shape,np.prod(self.bias.shape), np.prod(self.bias.shape))
         #self.bias = bias_initializer.initialize(self.bias.shape, np.prod(self.convolution_shape), np.prod(self.convolution_shape))
-        #self.bias = bias_initializer.initialize(self.num_kernels, np.prod(self.convolution_shape), self.num_kernels * np.prod(self.convolution_shape[1::]))
+        self.bias = bias_initializer.initialize(self.num_kernels, np.prod(self.convolution_shape), self.num_kernels * np.prod(self.convolution_shape[1::]))
 
     @property
     def optimizer(self):
