@@ -108,7 +108,6 @@ class Conv(BaseLayer):
                     layer_indx = 0
                 else:
                     layer_indx = math.floor(back_weights.shape[1] / 2)
-                print(back_weights.shape, layer_indx)
                 back_conv = signal.convolve(layer, self.back_weights[i], mode='same')[layer_indx]
                 #back_conv = np.sum(back_conv, axis=0)
                 features_back = np.append(features_back, [back_conv], axis=0)

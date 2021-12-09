@@ -5,46 +5,43 @@ from Layers.Base import BaseLayer
 class FullyConnected(BaseLayer):
     def __init__(self, input_size, output_size):
         super().__init__()
-
         self.trainable = True
         self.input_size = input_size
         self.output_size = output_size
-        # initial random weights
-        weights = np.random.rand(self.input_size + 1, self.output_size)
-        self.weights = weights
-        self.update_weights = np.random.rand(self.input_size, self.output_size)
-        self.update_bias = np.ones(self.output_size)
-        self._gradient_weights = self.weights
+        self.weights = np.random.rand(self.input_size + 1, self.output_size)
+        self.bias = np.ones(self.output_size)
         self._optimizer = None
-        self.input = 0
 
     def forward(self, input_tensor):
-        self.input = np.c_[input_tensor, np.ones((input_tensor.shape[0], 1))]
-        self.weights = self.weights
-        # Y_hat = np.dot(X, W)
-        return np.dot(self.input, self.weights)
+        X = np.c_[input_tensor, np.ones((input_tensor.shape[0], 1))]
+        W = self.weights
+        self.input = X
+        Y_hat = np.dot(X, W)
+        return Y_hat
 
     def backward(self, error_tensor):
-        x = self.input
-        errorpre = np.dot(
+        error_tensor_previous_layer = np.dot(
             error_tensor,
-            self.weights[0:self.weights.shape[0]-1, :].T
+            self.weights[:, :].T
         )
-        self.gradient_tensor = np.dot(x.T, error_tensor)
+        self.gradient_tensor = np.dot(self.input.T, error_tensor)
         if self.optimizer is not None:
             self.weights = self.optimizer.calculate_update(
                 self.weights,
                 self.gradient_tensor
             )
-        return errorpre
+        error_tensor_previous_layer = np.delete(error_tensor_previous_layer, error_tensor_previous_layer.shape[1] - 1, axis=1)
+        return error_tensor_previous_layer
+
+    def initialize(self, weights_initializer, bias_initializer):
+        weights = weights_initializer.initialize((self.weights.shape[0]-1, self.weights.shape[1]), self.input_size, self.output_size)
+        bias = bias_initializer.initialize((1, self.weights.shape[1]), self.input_size, self.output_size)
+        bias = bias_initializer.initialize(self.bias.shape, self.output_size, 1)
+        self.weights = np.vstack((weights, bias))
 
     @property
     def gradient_weights(self):
         return self.gradient_tensor
-
-    @gradient_weights.setter
-    def gradient_weights(self, value):
-        self._gradient_weights = value
 
     @property
     def optimizer(self):
@@ -57,15 +54,3 @@ class FullyConnected(BaseLayer):
     @optimizer.deleter
     def optimizer(self):
         del self._optimizer
-
-    def initialize(self, weights_initializer, bias_initializer):
-        # add
-        weights = weights_initializer.initialize(self.weights.shape, self.input_size, self.output_size)
-        bias = bias_initializer.initialize(self.weights.shape, self.input_size, self.output_size)
-        self.weights = np.vstack((weights, bias))
-        #self._gradient_weights = self.weights
-
-
-        #self.update_weights = weights_initializer.initialize(self.update_weights.shape, np.ndim(self.weights), np.ndim(self.weights))
-        #self.update_bias = bias_initializer.initialize(self.update_bias.shape, np.ndim(self.weights), np.ndim(self.weights))
-        #self.weights = np.vstack((self.update_weights, self.update_bias))
