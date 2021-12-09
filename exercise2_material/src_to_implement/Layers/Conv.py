@@ -36,6 +36,7 @@ class Conv(BaseLayer):
         self.input_tensor = None
         self.image_size = None
         self.error_tensor = None
+        self.back_weights = None
 
     def forward(self, input_tensor):
         self.input_tensor = input_tensor
@@ -66,11 +67,11 @@ class Conv(BaseLayer):
             feature_map = feature_map[:, :, 0::self.stride_shape[0], 0::self.stride_shape[1]]
         elif len(self.stride_shape) == 1:
             feature_map = feature_map[:, :, 0::self.stride_shape[0]]
-
+        print("forwrad out = ", feature_map.shape)
         return feature_map
 
     def backward(self, error_tensor):
-
+        print("error_tensor", error_tensor.shape)
         # Up-sampling
         error_empty = np.zeros(np.concatenate(((error_tensor.shape[0], error_tensor.shape[1]), self.image_size)))
         if np.ndim(error_tensor) == 4:
@@ -78,97 +79,125 @@ class Conv(BaseLayer):
         elif np.ndim(error_tensor) == 3:  # 1D case
             error_empty[:, :, 0::self.stride_shape[0]] = error_tensor
         self.error_tensor = error_empty
-
+        print("input", self.input_tensor.shape)
+        print("error", self.error_tensor.shape)
         # reshaping weights
+        # print("fw", self.weights.shape)
         back_weights = np.copy(self.weights)
-        print("bw", back_weights.shape)
-        back_weights = np.swapaxes(back_weights, 0, 1)
-        self.weights = back_weights
-        print("bw", back_weights.shape)
+        back_weights = np.swapaxes(back_weights, 0, 1)  # swap kernel no and channel
+        back_weights = np.flip(back_weights, 1)  # flip along channels
+        self.back_weights = back_weights
+        # print("bw" , self.back_weights.shape)
 
         # gradient wrt lower layer
-        feature_map_back = np.zeros((np.concatenate(((1, self.weights.shape[0]), self.image_size))))
-        print(feature_map_back.shape)
+        feature_map_back = np.zeros((np.concatenate(((1, self.back_weights.shape[0]), self.image_size))))
         for layer in self.error_tensor:
+            # print("la", layer.shape)
             features_back = np.zeros((np.concatenate(((1,), self.image_size))))
-            for i in range(self.weights.shape[0]):
-                print("w", self.weights[i].shape, "l", layer.shape)
-                back_conv = signal.convolve(layer, self.weights[i], mode='same')
+            for i in range(self.back_weights.shape[0]):
+                back_conv = signal.convolve(layer, self.back_weights[i], mode='same')
                 back_conv = np.sum(back_conv, axis=0)
-                print("b", back_conv.shape, "f", features_back.shape)
                 features_back = np.append(features_back, [back_conv], axis=0)
-                print("fb", features_back.shape)
-            print("fea", feature_map_back.shape)
             feature_map_back = np.append(feature_map_back, [features_back[1::]], axis=0)
         feature_map_back = feature_map_back[1::]
+        print(feature_map_back.shape)
 
         # gradient wrt weights
+        back_features = np.copy(feature_map_back)
+        # print("before pad", back_features.shape)
+        # padding calculation
+        if np.ndim(self.weights) == 4:
+            pad_y = ((self.weights.shape[2] - 1) / 2)
+            pad_x = ((self.weights.shape[3] - 1) / 2)
+            print(pad_x, pad_y)
+            # check for y
+            if float.is_integer(pad_y):
+                pad_y1 = math.floor(pad_y)
+                pad_y2 = math.floor(pad_y)
+            else:
+                pad_y1 = math.floor(pad_y)
+                pad_y2 = math.floor(pad_y) + 1
+            # check for x
+            if float.is_integer(pad_x):
+                pad_x1 = math.floor(pad_x)
+                pad_x2 = math.floor(pad_x)
+            else:
+                pad_x1 = math.floor(pad_x)
+                pad_x2 = math.floor(pad_x) + 1
+            print(pad_x1, pad_x2, pad_y1, pad_y2)
+            padded_image = np.pad(self.input_tensor, ((0, 0), (0, 0), (pad_y1, pad_y2), (pad_x1, pad_x2)), 'constant',
+                                  constant_values=0.0)
+            print("after pad", padded_image.shape)
+        elif np.ndim(self.weights) == 3:
+            padded_image = self.input_tensor
+        # correlate part
+        self.gradient_weights = np.zeros(self.weights.shape)
+        print("grad", self.gradient_weights.shape)
+        if np.ndim(self.weights) == 4:
+            # bias gradient
+            self.gradient_bias = np.sum(np.sum(np.sum(self.error_tensor, axis=3), axis=2), axis=0)
+            # weights gradient
+            gradient_weights = np.copy(self.gradient_weights)
+            for i in range(self.input_tensor.shape[0]):  # 2
+                for j in range(self.error_tensor.shape[1]):  # 4
+                    for k in range(self.input_tensor.shape[1]):  # 3
+                        print(padded_image[i, k, :, :].shape, self.error_tensor[i, j, :, :].shape)
+                        # left working here
+                        # check that the weights matrix init for the back pass is not
+                        # matching and should be realted with something else
+                        gradient_weights[j, k, :, :] += signal.correlate(padded_image[i, k, :, :],
+                                                                         self.error_tensor[i, j, :, :], mode='valid')
 
+            self.gradient_weights = gradient_weights
+            print("res", self.gradient_weights.shape)
+        elif np.ndim(self.weights) == 3:
+            # bias
+            self.gradient_bias = np.sum(np.sum(self.error_tensor, axis=2), axis=0)
+            # weights
+            gradient_weights = np.copy(self.gradient_weights)
+            for i in range(self.input_tensor.shape[0]):
+                for j in range(self.num_kernels):
+                    for k in range(self.gradient_weights.shape[1]):
+                        gradient_weights[j, k, :] += signal.correlate(padded_image[i, k, :],
+                                                                         self.error_tensor[i, j, :], mode='valid')
+            self.gradient_weights = gradient_weights
+
+        if self.optimizer:
+            self.weights = self.optimizerWeigths.calculate_update(self.weights, self.gradient_weights)
+            self.bias = self.optimizerBias.calculate_update(self.bias, self.gradient_bias)
 
         return feature_map_back
-
-
-        '''
-        derivative_out = error_tensor
-        x, w, b, cnn_params = self.cache
-
-        N, C, H, W = x.shape  # For input
-        F, _, HH, WW = w.shape  # For weights
-        _, _, height_out, weight_out = derivative_out.shape  # For output feature maps
-
-        stride = cnn_params['stride']
-        pad = cnn_params['pad']
-
-        dx = np.zeros_like(x)
-        dw = np.zeros_like(w)
-        db = np.zeros_like(b)
-
-        x_padded = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), mode='constant', constant_values=0)
-        dx_padded = np.pad(dx, ((0, 0), (0, 0), (pad, pad), (pad, pad)), mode='constant', constant_values=0)
-
-        for n in range(N):
-            for f in range(F):
-                for i in range(0, H, stride[0]):
-                    for j in range(0, W, stride[1]):
-                        dx_padded[n, :, i:i + HH, j:j + WW] += w[f, :, :, :] * derivative_out[n, f, i, j]
-                        dw[f, :, :, :] += x_padded[n, :, i:i + HH, j:j + WW] * derivative_out[n, f, i, j]
-                        db[f] += derivative_out[n, f, i, j]
-
-        dx = dx_padded[:, :, 1:-1, 1:-1]
-        return dx
-        '''
 
     def initialize(self, weights_initializer, bias_initializer):
         self.weights = weights_initializer.initialize(self.weights.shape,
                                                       np.prod(self.convolution_shape),
-                                                      self.num_kernels * self.convolution_shape[0] *
-                                                      self.convolution_shape[1])
+                                                      self.num_kernels * np.prod(self.convolution_shape[1::]))
         self.bias = bias_initializer.initialize(self.bias.shape,
                                                 np.prod(self.convolution_shape),
                                                 np.prod(self.convolution_shape))
 
     @property
     def optimizer(self):
-        return self.__optimizer
+        return self._optimizerWeigths is not  None and self._optimizerWeigths is not None
 
     @optimizer.setter
     def optimizer(self, optimizer):
-        self.__optimizer = optimizer
-        self.optimizerWeigths = copy.deepcopy(self.__optimizer)
-        self.optimizerBias = copy.deepcopy(self.__optimizer)
+        self._optimizer = optimizer
+        self._optimizerWeigths = copy.deepcopy(optimizer)
+        self._optimizerBias = copy.deepcopy(optimizer)
 
     @property
     def gradient_weights(self):
-        return self.__gradient_weights
+        return self._gradient_weights
 
     @gradient_weights.setter
     def gradient_weights(self, gradient_weights):
-        self.__gradient_weights = gradient_weights
+        self._gradient_weights = gradient_weights
 
     @property
     def gradient_bias(self):
-        return self.__gradient_bias
+        return self._gradient_bias
 
     @gradient_bias.setter
     def gradient_bias(self, gradient_bias):
-        self.__gradient_bias = gradient_bias
+        self._gradient_bias = gradient_bias
