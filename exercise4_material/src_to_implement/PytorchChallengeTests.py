@@ -68,6 +68,7 @@ class TestDataset(unittest.TestCase):
         a = 0.0
         s = np.zeros(3)
         s2 = np.zeros(3)
+
         for x, _ in val_dl:
             x = x[0].cpu().numpy()
             a += np.prod(x.shape[1:])
