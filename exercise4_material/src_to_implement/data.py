@@ -25,10 +25,8 @@ class ChallengeDataset(Dataset):
         data_tuple = []
         # get the item
         item = self.data.iloc[index]
-        #print("item:", item)
         # separate treatment to the image
         img_color = gray2rgb(imread(item[0]))
-        # print("ing:", img_color.shape)
         transform_img = self._transform(img_color).float()
         # punch two labels together
         labels = torch.tensor((item[1], item[2])).float()

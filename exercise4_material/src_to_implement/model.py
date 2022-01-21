@@ -71,6 +71,8 @@ class ResNet(nn.Module):
         # last few
         data = self.global_avg(data)
         data = self.flattenLayer(data)
+        # flatten layer,
+        # data = data.view(data.size(0), -1)
         data = self.fc_layer(data)
         data = self.sigmoid(data)
 
