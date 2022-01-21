@@ -169,7 +169,8 @@ class Trainer:
         # return the losses for both training and validation
 
         return loss_train, loss_val
-        
+
+    # testing script to run on trained model
     def test_loop(self, epochs=-1):
         assert epochs > 0
         loss = np.array([])
