@@ -3,14 +3,13 @@ from data import ChallengeDataset
 from trainer import Trainer
 from matplotlib import pyplot as plt
 import numpy as np
-import model
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
 # load the data from the csv file and perform a train-test-split
 # this can be accomplished using the already imported pandas and sklearn.model_selection modules
 data_files = pd.read_csv('data.csv', sep=';')
-train_data, test_data = train_test_split(data_files, train_size=0.7, test_size=0.3, random_state=1, shuffle=True)
+train_data, test_data = train_test_split(data_files, train_size=0.98, test_size=0.02,  random_state=1)
 print("train_data_batches", train_data.__len__(), test_data.__len__())
 
 # set up data loading for the training and validation set each using t.utils.data.DataLoader and ChallengeDataset objects

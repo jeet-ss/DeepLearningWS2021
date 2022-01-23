@@ -11,16 +11,18 @@ from sklearn.model_selection import train_test_split
 # load the data from the csv file and perform a train-test-split
 # this can be accomplished using the already imported pandas and sklearn.model_selection modules
 data_files = pd.read_csv('data.csv', sep=';')
-#tt, vt = train_test_split(data_files, train_size=0.98, test_size=0.02,  random_state=1 )
-train_data, validation_data = train_test_split(data_files, train_size=0.8, test_size=0.2, random_state=1)
+tt, vt = train_test_split(data_files, train_size=0.2, test_size=0.8,  random_state=1 )
+train_data, validation_data = train_test_split(tt, train_size=0.8, test_size=0.2, random_state=1)
+train_data = tt
+validation_data = tt
 # TODO: remove
 print("train_data_batches", train_data.__len__(), validation_data.__len__())
 
 # Hyper parameters
 learning_rate = 0.01
 momentum = 0.9
-early_stopping_patience = 5
-epochs_num = 100
+early_stopping_patience = 100
+epochs_num = 1000
 batch_size = 50
 
 # set up data loading for the training and validation set each using t.utils.data.DataLoader and ChallengeDataset objects
@@ -33,7 +35,8 @@ resnet = model.ResNet()
 # set up a suitable loss criterion (you can find a pre-implemented loss functions in t.nn)
 loss_function = t.nn.BCELoss()
 # set up the optimizer (see t.optim)
-optimizer = t.optim.SGD(resnet.parameters(), lr=learning_rate, momentum=momentum)   # Hyper parameters
+#optimizer = t.optim.Adam(resnet.parameters(), lr=learning_rate)
+optimizer = t.optim.SGD(resnet.parameters(), lr=learning_rate, momentum=momentum)
 # create an object of type Trainer and set its early stopping criterion
 cuda_check = t.cuda.is_available()
 # TODO: remove

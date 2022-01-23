@@ -51,6 +51,8 @@ class ResNet(nn.Module):
         self.res_block_2 = ResBlock(64, 128, 2)
         self.res_block_3 = ResBlock(128, 256, 2)
         self.res_block_4 = ResBlock(256, 512, 2)
+        # add layer
+        self.dropout = nn.Dropout(p=0.5)
         # self layer
         self.global_avg = nn.AdaptiveAvgPool2d(1)
         self.flattenLayer = nn.Flatten()
@@ -68,6 +70,8 @@ class ResNet(nn.Module):
         data = self.res_block_2(data)
         data = self.res_block_3(data)
         data = self.res_block_4(data)
+        #
+        data = self.dropout(data)
         # last few
         data = self.global_avg(data)
         data = self.flattenLayer(data)
